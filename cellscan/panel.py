@@ -10,7 +10,7 @@ class PanelThread(threading.Thread):
         threading.Thread.__init__(self)
         self.q = q
         self.live = True
-        self.ledmode = 'blink'
+        self.ledmode = 'off'
 
     def run(self):
         led = LED(27)

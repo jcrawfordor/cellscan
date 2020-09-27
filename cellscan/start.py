@@ -39,9 +39,20 @@ def __main__():
 
     # And now we just go into event loop
     log.info("Startup complete.")
+    locn = None
     while True:
         event = q.get(block=True)
         log.debug(f"Received {event[0]}: {event[1]}")
+
+        # Handle events which can occur
+        if event[0] == 'LocationFix':
+            # Turn on the LED if we just got the first good fix
+            if locn == None:
+                panel.setLed('on')
+            # Stash the new most recent event for future use
+            locn = event[1]
+        elif event[0] == "NetworkData":
+            panel.setLed("blink")
 
 if __name__ == "__main__":
     __main__()
