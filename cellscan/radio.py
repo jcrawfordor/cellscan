@@ -71,37 +71,34 @@ class RadioThread(threading.Thread):
         self.atx.write(b'\r\n') # Clear any partial command it may have received
         self.atx.write(b'ATE0\r\n') # Turn off echoing of commands
         self.atx.write(b'ATZ\r\n') # Soft reset modem (turns off weird modes)
+        time.sleep(1)
         self.atx.reset_input_buffer() # Discard anything the modem returned (echos, etc)
     
     def __atIdentify(self):
-        return self.__atGetResp(b'AT+GMM')
+        return self.__atGetResp(b'AT+GMM').strip()
 
     def __atEnableNMEA(self):
         # Enable power to GPS module
-        self.__atExpectOK(b'AT$GPSP=1')
+        self.__atGetResp(b'AT$GPSP=1', errorOK=True)
         # Enable NMEA stream via dedicated NMEA interface
-        self.__atExpectOK(b'AT$GPSNMUN=2,1,1,1,1,1,1')
-    
-    def __atExpectOK(self, command):
-        # This raises an exception if the modem responds with other than "OK". Useful because a
-        # large portion of AT commands expect "OK" or error message.
-        res = self.__atGetResp(command)
-        if res.endswith("OK"):
-            return res
-        else:
-            raise RadioException(f"Command {command}, Expected OK but got {res}")
+        self.__atGetResp(b'AT$GPSNMUN=2,1,1,1,1,1,1')
 
-    def __atGetResp(self, command):
+    def __atGetResp(self, command, errorOK=False):
         self.atx.write(command + b'\r\n')
         log.debug(f"Sent command {command}")
         data = ''
+        # Eat the echo back
+        self.atx.readline()
         # Get the actual response
-        line = self.atx.readline().decode('ASCII')
-        while line != "OK":
-            log.debug(f"AT Reply: {data}")
-            data += line + '\n'
+        line = self.atx.readline().decode('ASCII').strip()
+        while line != "OK" and line != "ERROR":
+            log.debug(f"AT Reply: {data.strip()}")
+            if line != "":
+                data += line + '\n'
             line = self.atx.readline().decode('ASCII').strip()
-        data += line
+
+        if line == "ERROR" and not errorOK:
+            raise RadioException(f"Command {command}, Expected OK but got {line}")
         return data
 
     def stop(self):
