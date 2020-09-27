@@ -86,12 +86,12 @@ class RadioThread(threading.Thread):
         log.debug(f"Sent command {command}")
         data = ''
         # Eat the echo back
-        log.debug(f"AT Reply: {self.atx.readline()}")
+        log.debug(f"AT Reply (echoback): {self.atx.readline().strip()}")
         # Get the actual response
         line = self.atx.readline().decode('ASCII').strip()
         while line != "OK" and line != "ERROR":
-            log.debug(f"AT Reply: {data.strip()}")
             if line != "":
+                log.debug(f"AT Reply: {line}")
                 data += line + '\n'
             line = self.atx.readline().decode('ASCII').strip()
 
