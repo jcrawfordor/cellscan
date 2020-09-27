@@ -85,7 +85,7 @@ class RadioThread(threading.Thread):
             raise RadioException(f"Command {command}, Expected OK but got {res}")
 
     def __atOneLine(self, command):
-        self.atx.write(command)
+        self.atx.write(command + b'\n')
         res = self.atx.readline().decode('ASCII')
         log.debug(f"{command} --> {res}")
         return res
