@@ -11,14 +11,14 @@ class GnssThread(threading.Thread):
         threading.Thread.__init__(self)
         self.q = q
         self.NMEAPort = NMEAPort
-        self.run = True
+        self.live = True
         self.nmea = None
 
     def run(self):
         log.debug(f"Listening for NMEA on {self.NMEAPort}...")
         self.nmea = serial.Serial(self.NMEAPort)
         
-        while self.run:
+        while self.live:
             line = self.nmea.readline()
             if line.startswith("$GPGGA"):
                 log.debug("Received $GPGGA sentence")
@@ -28,4 +28,4 @@ class GnssThread(threading.Thread):
                     self.q.put(['LocationFix', {'lat': sentence.latitude, 'lon': sentence.longitude, 'alt': msg.altitude}])
 
     def stop(self):
-        self.run = False
+        self.live = False

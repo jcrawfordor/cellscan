@@ -9,7 +9,7 @@ class PanelThread(threading.Thread):
     def __init__(self, q):
         threading.Thread.__init__(self)
         self.q = q
-        self.run = True
+        self.live = True
         self.ledmode = 'blink'
 
     def run(self):
@@ -19,7 +19,7 @@ class PanelThread(threading.Thread):
         button.when_released = self.__endPress
         log.debug("Panel thread startup complete")
         
-        while self.run:
+        while self.live:
             if self.ledmode == 'blink':
                 led.toggle()
             if self.ledmode == 'on':
@@ -29,7 +29,7 @@ class PanelThread(threading.Thread):
             time.sleep(1)
 
     def stop(self):
-        self.run = False
+        self.live = False
 
     def setLed(self, mode):
         self.ledmode = mode

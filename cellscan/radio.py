@@ -13,7 +13,7 @@ class RadioThread(threading.Thread):
         threading.Thread.__init__(self)
         self.q = q
         self.ATPort = ATPort
-        self.run = True
+        self.live = True
         self.atx = None
 
     def run(self):
@@ -24,7 +24,7 @@ class RadioThread(threading.Thread):
         log.debug("Enabling unsolicited NMEA data...")
         self.__atEnableNMEA()
         
-        while self.run:
+        while self.live:
             log.debug("Starting network scan")
             try:
                 sites = self.__networkScan()
@@ -91,4 +91,4 @@ class RadioThread(threading.Thread):
         return res
 
     def stop(self):
-        self.run = False
+        self.live = False
