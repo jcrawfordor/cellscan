@@ -68,9 +68,9 @@ class RadioThread(threading.Thread):
         # This is kind of a weird set of steps designed to put the modem into a good state even if
         # it had previously received a partial command or was in a weird config (e.g. echo on).
         # I kept running into this stuff in testing/debugging.
-        self.atx.write(b'\n') # Clear any partial command it may have received
-        self.atx.write(b'ATE0\n') # Turn off echoing of commands
-        self.atx.write(b'ATZ\n') # Soft reset modem (turns off weird modes)
+        self.atx.write(b'\r\n') # Clear any partial command it may have received
+        self.atx.write(b'ATE0\r\n') # Turn off echoing of commands
+        self.atx.write(b'ATZ\r\n') # Soft reset modem (turns off weird modes)
         self.atx.reset_input_buffer() # Discard anything the modem returned (echos, etc)
     
     def __atIdentify(self):
@@ -92,14 +92,14 @@ class RadioThread(threading.Thread):
             raise RadioException(f"Command {command}, Expected OK but got {res}")
 
     def __atGetResp(self, command):
-        self.atx.write(command + b'\n\r')
+        self.atx.write(command + b'\r\n')
         log.debug(f"Sent command {command}")
         data = ''
         # Get the actual response
         line = self.atx.readline().decode('ASCII')
-        while line.strip() != "OK":
-            data += line.strip()
-            line = self.atx.readline().decode('ASCII')
+        while line != "OK":
+            data += line
+            line = self.atx.readline().decode('ASCII').strip()
 
         log.debug(f"{command} --> {data}")
         return data
