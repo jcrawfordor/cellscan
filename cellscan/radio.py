@@ -74,7 +74,7 @@ class RadioThread(threading.Thread):
         self.atx.reset_input_buffer() # Discard anything the modem returned (echos, etc)
     
     def __atIdentify(self):
-        return self.__atOneLine(b'AT+GMM')
+        return self.__atGetResp(b'AT+GMM')
 
     def __atEnableNMEA(self):
         # Enable power to GPS module
@@ -85,19 +85,24 @@ class RadioThread(threading.Thread):
     def __atExpectOK(self, command):
         # This raises an exception if the modem responds with other than "OK". Useful because a
         # large portion of AT commands expect "OK" or error message.
-        res = self.__atOneLine(command)
+        res = self.__atGetResp(command)
         if res == "OK":
             return res
         else:
             raise RadioException(f"Command {command}, Expected OK but got {res}")
 
-    def __atOneLine(self, command):
-        self.atx.write(command + b'\n')
+    def __atGetResp(self, command):
+        self.atx.write(command + b'\n\r')
         log.debug(f"Sent command {command}")
+        data = ''
         # Get the actual response
-        res = self.atx.readline().decode('ASCII')
-        log.debug(f"{command} --> {res}")
-        return res
+        line = self.atx.readline().decode('ASCII')
+        while line.strip() != "OK":
+            data += line.strip()
+            line = self.atx.readline().decode('ASCII')
+
+        log.debug(f"{command} --> {data}")
+        return data
 
     def stop(self):
         self.live = False
