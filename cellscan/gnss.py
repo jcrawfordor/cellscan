@@ -25,7 +25,7 @@ class GnssThread(threading.Thread):
                 sentence = pynmea2.parse(line)
                 if sentence.gps_qual != 0:
                     # Only send on valid fixes
-                    self.q.put(['LocationFix', {'lat': sentence.latitude, 'lon': sentence.longitude, 'alt': msg.altitude}])
+                    self.q.put(['LocationFix', {'lat': sentence.latitude, 'lon': sentence.longitude, 'alt': sentence.altitude}])
 
     def stop(self):
         self.live = False
