@@ -19,6 +19,7 @@ class RadioThread(threading.Thread):
     def run(self):
         log.debug(f"Connecting to radio on {self.ATPort} to configure...")
         self.atx = serial.Serial(self.ATPort)
+        self.__atReset()
         modemModel = self.__atIdentify()
         log.info(f"Connected to modem {modemModel}")
         log.debug("Enabling unsolicited NMEA data...")
@@ -64,7 +65,13 @@ class RadioThread(threading.Thread):
         return sites
 
     def __atReset(self):
-        return self.__atExpectOK(b'ATZ0')
+        # This is kind of a weird set of steps designed to put the modem into a good state even if
+        # it had previously received a partial command or was in a weird config (e.g. echo on).
+        # I kept running into this stuff in testing/debugging.
+        self.atx.write(b'\n') # Clear any partial command it may have received
+        self.atx.write(b'ATE0\n') # Turn off echoing of commands
+        self.atx.write(b'ATZ\n') # Soft reset modem (turns off weird modes)
+        self.atx.reset_input_buffer() # Discard anything the modem returned (echos, etc)
     
     def __atIdentify(self):
         return self.__atOneLine(b'AT+GMM')
@@ -86,6 +93,7 @@ class RadioThread(threading.Thread):
 
     def __atOneLine(self, command):
         self.atx.write(command + b'\n')
+        # Get the actual response
         res = self.atx.readline().decode('ASCII')
         log.debug(f"{command} --> {res}")
         return res
