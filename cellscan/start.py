@@ -46,13 +46,20 @@ def __main__():
 
         # Handle events which can occur
         if event[0] == 'LocationFix':
+            # New location fix from GPS
             # Turn on the LED if we just got the first good fix
             if locn == None:
                 panel.setLed('on')
             # Stash the new most recent event for future use
             locn = event[1]
+
         elif event[0] == "NetworkData":
-            panel.setLed("blink")
+            # New network scan result
+            pass
+
+        elif event[0] == "PanelEvent":
+            # User pressed a button
+            pass
 
 if __name__ == "__main__":
     __main__()
