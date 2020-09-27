@@ -39,9 +39,7 @@ class RadioThread(threading.Thread):
         log.debug("End of network scan, parsing")
         sites = []
         for line in lines:
-            line = self.atx.readline().decode('ASCII')
-            log.debug(f"Scan data: {line}")
-
+            log.debug(f"Parsing line: {line}")
             if line.startswith("uarfcn"):
                 # Indicates a 3G cell
                 lineItems = line.split()
