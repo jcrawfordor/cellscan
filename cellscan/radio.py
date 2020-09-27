@@ -98,11 +98,10 @@ class RadioThread(threading.Thread):
         # Get the actual response
         line = self.atx.readline().decode('ASCII')
         while line != "OK":
+            log.debug(f"AT Reply: {data}")
             data += line + '\n'
             line = self.atx.readline().decode('ASCII').strip()
         data += line
-
-        log.debug(f"AT: {command} --> {data}")
         return data
 
     def stop(self):
