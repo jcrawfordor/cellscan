@@ -21,7 +21,7 @@ class GnssThread(threading.Thread):
         while self.live:
             line = self.nmea.readline().decode('ASCII')
             if line.startswith("$GPGGA"):
-                log.debug("Received $GPGGA sentence")
+                log.debug(f"sentence: {line.strip()}")
                 sentence = pynmea2.parse(line)
                 if sentence.gps_qual != 0:
                     # Only send on valid fixes
