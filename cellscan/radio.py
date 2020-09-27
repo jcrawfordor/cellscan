@@ -86,7 +86,7 @@ class RadioThread(threading.Thread):
         # This raises an exception if the modem responds with other than "OK". Useful because a
         # large portion of AT commands expect "OK" or error message.
         res = self.__atGetResp(command)
-        if res == "OK":
+        if res.endswith("OK"):
             return res
         else:
             raise RadioException(f"Command {command}, Expected OK but got {res}")
@@ -98,8 +98,9 @@ class RadioThread(threading.Thread):
         # Get the actual response
         line = self.atx.readline().decode('ASCII')
         while line != "OK":
-            data += line
+            data += line + '\n'
             line = self.atx.readline().decode('ASCII').strip()
+        data += line
 
         log.debug(f"{command} --> {data}")
         return data
