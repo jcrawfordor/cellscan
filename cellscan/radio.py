@@ -28,7 +28,7 @@ class RadioThread(threading.Thread):
         while self.live:
             try:
                 sites = self.__networkScan()
-                self.q.put(['NetworkData', {'sites': sites}])
+                self.q.put(['NetworkData', sites])
             except Exception:
                 log.exception("Network scan failed.")
             time.sleep(1)
