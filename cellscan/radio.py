@@ -47,7 +47,7 @@ class RadioThread(threading.Thread):
                 mnc = lineItems[7]
                 scr = lineItems[10]
                 cellid = lineItems[12]
-                lac = [14]
+                lac = lineItems[14]
                 sites.append({'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
 
             if line.startswith("arfcn"):
