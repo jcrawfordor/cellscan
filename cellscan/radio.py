@@ -26,7 +26,6 @@ class RadioThread(threading.Thread):
         self.__atEnableNMEA()
         
         while self.live:
-            log.debug("Starting network scan")
             try:
                 sites = self.__networkScan()
                 self.q.put(['NetworkData', {'sites': sites}])
@@ -35,10 +34,11 @@ class RadioThread(threading.Thread):
             time.sleep(1)
     
     def __networkScan(self):
-        self.atx.write(b'AT#CSURV')
-        line = ""
+        log.debug("Starting network scan")
+        lines = self.__atGetResp(b'AT#CSURV')
+        log.debug("End of network scan, parsing")
         sites = []
-        while line != "OK":
+        for line in lines:
             line = self.atx.readline().decode('ASCII')
             log.debug(f"Scan data: {line}")
 
@@ -61,7 +61,6 @@ class RadioThread(threading.Thread):
                 cellid = lineItems[15]
                 sites.append([mcc, mnc, lac, cellid])
 
-        log.debug("End of network scan")
         return sites
 
     def __atReset(self):
@@ -69,7 +68,6 @@ class RadioThread(threading.Thread):
         # it had previously received a partial command or was in a weird config (e.g. echo on).
         # I kept running into this stuff in testing/debugging.
         self.atx.write(b'\r\n') # Clear any partial command it may have received
-        self.atx.write(b'ATE0\r\n') # Turn off echoing of commands
         self.atx.write(b'ATZ\r\n') # Soft reset modem (turns off weird modes)
         time.sleep(1)
         self.atx.reset_input_buffer() # Discard anything the modem returned (echos, etc)
@@ -88,7 +86,7 @@ class RadioThread(threading.Thread):
         log.debug(f"Sent command {command}")
         data = ''
         # Eat the echo back
-        self.atx.readline()
+        log.debug(f"AT Reply: {self.atx.readline()}")
         # Get the actual response
         line = self.atx.readline().decode('ASCII').strip()
         while line != "OK" and line != "ERROR":
@@ -99,6 +97,7 @@ class RadioThread(threading.Thread):
 
         if line == "ERROR" and not errorOK:
             raise RadioException(f"Command {command}, Expected OK but got {line}")
+
         return data
 
     def stop(self):
