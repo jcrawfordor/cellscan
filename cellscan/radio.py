@@ -43,21 +43,23 @@ class RadioThread(threading.Thread):
             if line.startswith("uarfcn"):
                 # Indicates a 3G cell
                 lineItems = line.split()
+                rx = lineItems[3]
                 mcc = lineItems[5]
                 mnc = lineItems[7]
                 scr = lineItems[10]
                 cellid = lineItems[12]
                 lac = lineItems[14]
-                sites.append({'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
+                sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
 
             if line.startswith("arfcn"):
-                # Indicates a 3G cell
+                # Indicates a 2G cell
                 lineItems = line.split()
+                rx = lineItems[5]
                 mcc = lineItems[9]
                 mnc = lineItems[11]
                 lac = lineItems[13]
                 cellid = lineItems[15]
-                sites.append({'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
+                sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
 
         return sites
 

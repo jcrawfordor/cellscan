@@ -4,6 +4,7 @@ import logging
 import argparse
 import time
 import queue
+import json
 
 from cellscan.panel import PanelThread
 from cellscan.radio import RadioThread
@@ -12,6 +13,7 @@ from cellscan.gnss import GnssThread
 def __main__():
     parser = argparse.ArgumentParser(description='CellScan service.')
     parser.add_argument('-l', '--log', dest='logLevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO', help='Set the logging level')
+    parser.add_argument('-o', '--out', dest='out', default='output.csv', help='Output file')
     args = parser.parse_args()
 
     logging.basicConfig(level=getattr(logging, args.logLevel))
@@ -37,6 +39,9 @@ def __main__():
     gnss = GnssThread(q, '/dev/ttyUSB1')
     gnss.start()
 
+    # Set up our output
+    outfile = open(args.out, 'w')
+
     # And now we just go into event loop
     log.info("Startup complete.")
     locn = None
@@ -55,7 +60,13 @@ def __main__():
 
         elif event[0] == "NetworkData":
             # New network scan result
-            pass
+            if locn != None:
+                sites = event[1]
+                for bsn in sites:
+                    bsn['lat'] = locn['lat']
+                    bsn['lon'] = locn['lon']
+                    bsn['alt'] = locn['alt']
+                    outfile.write(json.dumps(bsn))
 
         elif event[0] == "PanelEvent":
             # User pressed a button
