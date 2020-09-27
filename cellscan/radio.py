@@ -3,7 +3,7 @@ import time
 import logging
 import serial
 
-log = logging.getLogger()
+log = logging.getLogger('radio')
 
 class RadioException(Exception):
     pass
@@ -102,7 +102,7 @@ class RadioThread(threading.Thread):
             line = self.atx.readline().decode('ASCII').strip()
         data += line
 
-        log.debug(f"{command} --> {data}")
+        log.debug(f"AT: {command} --> {data}")
         return data
 
     def stop(self):

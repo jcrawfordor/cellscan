@@ -22,8 +22,8 @@ def __main__():
     q = queue.Queue()
 
     # Set up panel
-    panel = PanelThread(q)
-    panel.start()
+    #panel = PanelThread(q)
+    #panel.start()
 
     # Set up radio
     # Note: The Telit modem in use (LE910C1) exposes multiple USB serial devices for different purposes,
@@ -34,8 +34,8 @@ def __main__():
     radio.start()
 
     # Set up location monitoring
-    gnss = GnssThread(q, '/dev/ttyUSB1')
-    gnss.start()
+    #gnss = GnssThread(q, '/dev/ttyUSB1')
+    #gnss.start()
 
     # And now we just go into event loop
     log.info("Startup complete.")

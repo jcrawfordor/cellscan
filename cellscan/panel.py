@@ -3,7 +3,7 @@ import time
 import logging
 from gpiozero import LED, Button
 
-log = logging.getLogger()
+log = logging.getLogger('panel')
 
 class PanelThread(threading.Thread):
     def __init__(self, q):

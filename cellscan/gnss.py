@@ -4,7 +4,7 @@ import logging
 import serial
 import pynmea2
 
-log = logging.getLogger()
+log = logging.getLogger('gnss')
 
 class GnssThread(threading.Thread):
     def __init__(self, q, NMEAPort):
