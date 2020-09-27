@@ -38,7 +38,7 @@ class RadioThread(threading.Thread):
         line = ""
         sites = []
         while line != "OK":
-            line = self.atx.readline()
+            line = self.atx.readline().decode('ASCII')
             log.debug(f"Scan data: {line}")
 
             if line.startswith("uarfcn"):
@@ -86,7 +86,7 @@ class RadioThread(threading.Thread):
 
     def __atOneLine(self, command):
         self.atx.write(command)
-        res = self.atx.readline()
+        res = self.atx.readline().decode('ASCII')
         log.debug(f"{command} --> {res}")
         return res
 

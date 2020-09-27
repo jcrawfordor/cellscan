@@ -19,7 +19,7 @@ class GnssThread(threading.Thread):
         self.nmea = serial.Serial(self.NMEAPort)
         
         while self.live:
-            line = self.nmea.readline()
+            line = self.nmea.readline().decode('ASCII')
             if line.startswith("$GPGGA"):
                 log.debug("Received $GPGGA sentence")
                 sentence = pynmea2.parse(line)
