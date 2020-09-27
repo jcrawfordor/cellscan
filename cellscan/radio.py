@@ -48,7 +48,7 @@ class RadioThread(threading.Thread):
                 scr = lineItems[10]
                 cellid = lineItems[12]
                 lac = [14]
-                sites.append([mcc, mnc, lac, cellid])
+                sites.append({'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
 
             if line.startswith("arfcn"):
                 # Indicates a 3G cell
@@ -57,7 +57,7 @@ class RadioThread(threading.Thread):
                 mnc = lineItems[11]
                 lac = lineItems[13]
                 cellid = lineItems[15]
-                sites.append([mcc, mnc, lac, cellid])
+                sites.append({'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
 
         return sites
 
