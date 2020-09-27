@@ -93,6 +93,7 @@ class RadioThread(threading.Thread):
 
     def __atOneLine(self, command):
         self.atx.write(command + b'\n')
+        log.debug(f"Sent command {command}")
         # Get the actual response
         res = self.atx.readline().decode('ASCII')
         log.debug(f"{command} --> {res}")
