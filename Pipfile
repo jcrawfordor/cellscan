@@ -10,6 +10,7 @@ gpiozero = "*"
 pyserial = "*"
 pylint = "*"
 pynmea2 = "*"
+peewee = "*"
 
 [requires]
 python_version = "3.8"

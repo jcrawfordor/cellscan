@@ -26,6 +26,13 @@ class PanelThread(threading.Thread):
                 led.on()
             if self.ledmode == 'off':
                 led.off()
+            if self.ledmode == 'once':
+                led.on()
+                self.ledmode = "oncedone"
+            if self.ledmode == 'oncedone':
+                led.off()
+                self.ledmode = "off"
+
             time.sleep(1)
 
     def stop(self):

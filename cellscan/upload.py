@@ -7,6 +7,8 @@ import ipaddress
 
 log = logging.getLogger('radio')
 
+from cellscan.data import Cellsite, Location
+
 class UploadException(Exception):
     pass
 
@@ -61,7 +63,8 @@ class UploadThread(threading.Thread):
     def run(self):
         log.info("Starting upload")
         self.__getDataConnection()
-        
+        self.__uploadData()
+        self.__disableNetworkConnection()
 
     def __getDataConnection(self):
         # Enable the modem, which is often disabled at boot
@@ -94,7 +97,7 @@ class UploadThread(threading.Thread):
             time.sleep(5)
             bearerInfo = self.__checkModemBearerStatus()
         
-        log.debug(f"Adding IP and routes. Our IP {bearerInfo['ip']}, prefix {bearerInfo['prefix']}, gateway {bearerInfo['gateway']}")
+        log.debug(f"Adding IP and routes. Our IP {bearerInfo['ip']}, prefix {bearerInfo['prefix']}, gateway {bearerInfo['gateway']}, mtu {bearerInfo['mtu']}")
         # Set IP and MTU on device
         subprocess.check_output(["ip", "addr", "add", bearerInfo['ip'], "dev", self.interface])
         subprocess.check_output(["ip", "link", "set", "dev", self.interface, "mtu", bearerInfo['mtu']])
@@ -104,6 +107,7 @@ class UploadThread(threading.Thread):
         # in the ipaddress module seems to be fine with describing a network with an IP *in* it.
         net = ipaddress.IPv4Network(f"{bearerInfo['ip']}/{bearerInfo['prefix']}", strict=False)
         baseIP = net.network_address
+        log.debug(f"Adding routes for {baseIP}/{bearerInfo['prefix']} and {self.target}")
         # Route to access gateway
         subprocess.check_output(["ip", "route", "add", f"{baseIP}/{bearerInfo['prefix']}", "dev", self.interface])
         # Route to access target via gateway
@@ -111,7 +115,14 @@ class UploadThread(threading.Thread):
         # And just like that, there should now be network connectivity to just the target IP.
     
     def __uploadData(self):
+        log.error("Would upload data, but that's not implemented.")
         pass
+
+    def __disableNetworkConnection(self):
+        log.debug("Disabling network connection")
+        subprocess.check_output(["ip", "link", "set", "dev", self.interface, "down"])
+        log.debug("Disconnecting bearer channel")
+        subprocess.check_output(["mmcli", "-b", "0", "-x"])
 
     def __checkModemBearerStatus(self):
         try:
