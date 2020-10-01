@@ -13,7 +13,7 @@ from cellscan.gnss import GnssThread
 def __main__():
     parser = argparse.ArgumentParser(description='CellScan service.')
     parser.add_argument('-l', '--log', dest='logLevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO', help='Set the logging level')
-    parser.add_argument('-o', '--out', dest='out', default='output.csv', help='Output file')
+    parser.add_argument('-o', '--out', dest='out', default='output.json', help='Output file')
     args = parser.parse_args()
 
     logging.basicConfig(level=getattr(logging, args.logLevel))
@@ -67,9 +67,18 @@ def __main__():
                     bsn['lon'] = locn['lon']
                     bsn['alt'] = locn['alt']
                     outfile.write(json.dumps(bsn))
+                    outfile.write("\n")
 
         elif event[0] == "PanelEvent":
             # User pressed a button
+            if event[1]['type'] == 'CtlButton' and event[1]['time'] < 1:
+                # Upload results
+                # First stop the radio since we are going to use it
+                radio.stop()
+                radio.join()
+                
+                radio = RadioThread(q, '/dev/ttyUSB3')
+                radio.start()
             pass
 
 if __name__ == "__main__":
