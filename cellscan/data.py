@@ -14,6 +14,7 @@ class Cellsite(Model):
     mnc = CharField()
     lac = CharField()
     cellid = CharField()
+    uploaded = BooleanField(default=False)
 
     class Meta:
         database = db
@@ -23,6 +24,7 @@ class Location(Model):
     lat = FloatField()
     lon = FloatField()
     alt = FloatField()
+    uploaded = BooleanField(default=False)
 
     class Meta:
         database = db
