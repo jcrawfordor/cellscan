@@ -24,6 +24,7 @@ def __main__():
     }
     runner = Runner(config)
     runner.setup()
+    runner.uploadData()
     while True:
         runner.step()
 
@@ -44,9 +45,9 @@ class Runner(object):
     def setup(self):
         self.tm = ThreadManager(self.config)
         self.tm.startPanel()
-        self.tm.startRadio()
         self.tm.startGnss()
-
+        # we DON'T start the radio thread here because it'll be started when the upload finishes.
+    
     # And now we just go into event loop
     def step(self):
         event = self.tm.q.get(block=True)
