@@ -13,8 +13,8 @@ class PanelThread(threading.Thread):
         self.ledmode = 'off'
 
     def run(self):
-        led = LED(27)
-        button = Button(22)
+        led = LED(18)
+        button = Button(4)
         button.when_pressed = self.__startPress
         button.when_released = self.__endPress
         log.debug("Panel thread startup complete")

@@ -92,7 +92,7 @@ class UploadThread(threading.Thread):
         
         # Now we need to find the bearer # which also changes
         bearerResp = subprocess.check_output(['mmcli', '-m', self.modemIndex]).decode('UTF-8')
-        self.bearerIndex = re.search(r"/Bearer/(\d+) ", bearerResp).group(1)
+        self.bearerIndex = re.search(r"/Bearer/(\d+)", bearerResp).group(1)
         log.debug(f"Using data bearer channel {self.bearerIndex}")
         
         # Retry connecting until it works
@@ -105,7 +105,7 @@ class UploadThread(threading.Thread):
             log.debug(f"Connecting modem for data, retry {retryCount}")
 
             try:
-                subprocess.check_output(["mmcli", "-b", "0", "-c", "--timeout", "15"])
+                subprocess.check_output(["mmcli", "-b", self.bearerIndex, "-c"])
             except subprocess.CalledProcessError:
                 log.debug("Modem connect command failed, probably timeout")
 
@@ -138,12 +138,12 @@ class UploadThread(threading.Thread):
         log.debug("Disabling network connection")
         subprocess.check_output(["ip", "link", "set", "dev", self.interface, "down"])
         log.debug("Disconnecting bearer channel")
-        subprocess.check_output(["mmcli", "-b", "0", "-x"])
+        subprocess.check_output(["mmcli", "-b", self.bearerIndex, "-x"])
 
     def __checkModemBearerStatus(self):
         try:
             # We are just assuming it's bearer 0... won't deal with more.
-            checkBearer = subprocess.check_output(["mmcli", "-b", "0"])
+            checkBearer = subprocess.check_output(["mmcli", "-b", self.bearerIndex])
             checkBearer = checkBearer.decode('UTF-8')
             if "connected: yes" in checkBearer:
                 netInfo = {}
