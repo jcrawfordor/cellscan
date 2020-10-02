@@ -56,6 +56,17 @@ class RadioThread(threading.Thread):
         sites = []
         for line in lines.split("\n"):
             log.debug(f"Parsing line: {line}")
+            if line.startswith("earfcn"):
+                # Indicates a 4G cell
+                lineItems = line.split()
+                rx = lineItems[3]
+                mcc = lineItems[5]
+                mnc = lineItems[7]
+                cellid = lineItems[9]
+                # For simplicity we just call it a LAC even though in 4G it's technically TAC
+                lac = lineItems[11]
+                sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid, 'gen': '4g'})
+
             if line.startswith("uarfcn"):
                 # Indicates a 3G cell
                 lineItems = line.split()
@@ -65,7 +76,7 @@ class RadioThread(threading.Thread):
                 scr = lineItems[10]
                 cellid = lineItems[12]
                 lac = lineItems[14]
-                sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
+                sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid, 'gen': '3g'})
 
             if line.startswith("arfcn"):
                 # Indicates a 2G cell
@@ -75,7 +86,7 @@ class RadioThread(threading.Thread):
                 mnc = lineItems[11]
                 lac = lineItems[13]
                 cellid = lineItems[15]
-                sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid})
+                sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid, 'gen': '2g'})
 
         return sites
 

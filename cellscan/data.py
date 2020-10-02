@@ -13,6 +13,7 @@ class Cellsite(Model):
     mcc = CharField()
     mnc = CharField()
     lac = CharField()
+    gen = CharField()
     cellid = CharField()
     uploaded = BooleanField(default=False)
 
