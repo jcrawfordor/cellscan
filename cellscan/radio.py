@@ -29,7 +29,7 @@ class RadioThread(threading.Thread):
         # them again for as long as the process this starts lives. This is of course yet another
         # reason why this thread needs to terminate cleanly before uploads can run.
         log.debug(f"Inhibiting modem index {self.modemIndex}")
-        mmProcess = subprocess.Popen(["mmcli", "-m", "0", "--inhibit"])
+        mmProcess = subprocess.Popen(["mmcli", "-m", self.modemIndex, "--inhibit"])
 
         log.debug(f"Connecting to radio on {self.ATPort} to configure...")
         self.atx = serial.Serial(self.ATPort)

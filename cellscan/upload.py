@@ -109,6 +109,7 @@ class UploadThread(threading.Thread):
             except subprocess.CalledProcessError:
                 log.debug("Modem connect command failed, probably timeout")
 
+            time.sleep(10)
             bearerInfo = self.__checkModemBearerStatus()
         
         log.debug(f"Adding IP and routes. Our IP {bearerInfo['ip']}, prefix {bearerInfo['prefix']}, gateway {bearerInfo['gateway']}, mtu {bearerInfo['mtu']}")
