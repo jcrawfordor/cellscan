@@ -65,6 +65,7 @@ class UploadThread(threading.Thread):
         self.__getDataConnection()
         self.__uploadData()
         self.__disableNetworkConnection()
+        q.put(["UploadComplete"])
 
     def __getDataConnection(self):
         # Enable the modem, which is often disabled at boot
@@ -76,9 +77,9 @@ class UploadThread(threading.Thread):
         # we're going to run it once to load in the config and then connect in a retry loop.
         log.debug(f"Configuring modem for APN {self.apn}")
         try:
-            subprocess.check_output(["mmcli", "-m", self.modemIndex, f"--simple-connect='apn={self.apn}'"])
+            subprocess.check_output(["mmcli", "-m", self.modemIndex, "--simple-connect", f"apn={self.apn}", "--timeout", "30"])
         except subprocess.CalledProcessError:
-            log.debug("Initial modem connection failed, will retry")
+            log.debug("Initial modem connection failed, probably timeout, will retry")
         
         # Retry connecting until it works
         retryCount = 0
@@ -90,15 +91,15 @@ class UploadThread(threading.Thread):
             log.debug(f"Connecting modem for data, retry {retryCount}")
 
             try:
-                subprocess.check_output(["mmcli", "-b", "0", "-c"])
+                subprocess.check_output(["mmcli", "-b", "0", "-c", "--timeout", "15"])
             except subprocess.CalledProcessError:
-                log.debug("Modem connect command failed.")
+                log.debug("Modem connect command failed, probably timeout")
 
-            time.sleep(5)
             bearerInfo = self.__checkModemBearerStatus()
         
         log.debug(f"Adding IP and routes. Our IP {bearerInfo['ip']}, prefix {bearerInfo['prefix']}, gateway {bearerInfo['gateway']}, mtu {bearerInfo['mtu']}")
         # Set IP and MTU on device
+        subprocess.check_output(["ip", "link", "set", "dev", self.interface, "up"])
         subprocess.check_output(["ip", "addr", "add", bearerInfo['ip'], "dev", self.interface])
         subprocess.check_output(["ip", "link", "set", "dev", self.interface, "mtu", bearerInfo['mtu']])
         # Figure out routes
@@ -128,7 +129,8 @@ class UploadThread(threading.Thread):
         try:
             # We are just assuming it's bearer 0... won't deal with more.
             checkBearer = subprocess.check_output(["mmcli", "-b", "0"])
-            if b"connected: yes" in checkBearer:
+            checkBearer = checkBearer.decode('UTF-8')
+            if "connected: yes" in checkBearer:
                 netInfo = {}
                 netInfo['ip'] = re.search(r"address: ([\d\.]+)", checkBearer).group(1)
                 netInfo['prefix'] = re.search(r"prefix: ([\d\.]+)", checkBearer).group(1)

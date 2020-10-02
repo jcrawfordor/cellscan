@@ -35,22 +35,31 @@ class Runner(object):
         parser.add_argument('-o', '--out', dest='out', default='output.json', help='Output file')
         self.args = parser.parse_args()
 
-        logging.basicConfig(level=getattr(logging, args.logLevel))
+        logging.basicConfig(level=getattr(logging, self.args.logLevel))
         self.log = logging.getLogger("cellscan")
         self.log.info("CellScan starting up.")
 
         self.locn = None
+        self.q = queue.Queue()
+
+        self.radio = None
+        self.gnss = None
+        self.panel = None
+        self.upload = None
         self.config = config
+
+        self.radioShouldBeRunning = False
     
     def setup(self):
-        self.tm = ThreadManager(self.config)
-        self.tm.startPanel()
-        self.tm.startGnss()
+        self.panel = PanelThread(self.q)
+        self.panel.start()
+        self.gnss = GnssThread(self.q, self.config['NMEAtty'])
+        self.gnss.start()
         # we DON'T start the radio thread here because it'll be started when the upload finishes.
     
     # And now we just go into event loop
     def step(self):
-        event = self.tm.q.get(block=True)
+        event = self.q.get(block=True)
         self.log.debug(f"Received {event[0]}: {event[1]}")
 
         # Handle events which can occur
@@ -60,6 +69,8 @@ class Runner(object):
             self.handleNetworkData(event)
         elif event[0] == "PanelEvent":
             self.handlePanelEvent(event)
+        elif event[0] == "UploadComplete":
+            self.handleUploadComplete(event)
     
     def handleLocationFix(self, event):
             # Stash the new most recent fix for future use
@@ -68,7 +79,7 @@ class Runner(object):
     def handleNetworkData(self, event):
             # New network scan result
             if self.locn != None:
-                self.tm.panel.setLed('once')
+                self.panel.setLed('once')
                 sites = event[1]
                 for bsn in sites:
                     bsn['lat'] = self.locn['lat']
@@ -80,57 +91,27 @@ class Runner(object):
             # User pressed a button
             if event[1]['type'] == 'CtlButton' and event[1]['time'] < 1:
                 self.uploadData()
+
+    def handleUploadComplete(self, event):
+        self.log.info("Upload complete. Returning to normal mode.")
+        self.radioShouldBeRunning = True
+        self.panel.setLed("off")
+        self.radio = RadioThread(self.q, self.config['ATtty'])
+        self.radio.start()
     
     def uploadData(self):
         # Stop the scanning, this will block until it's closed out
         self.log.debug("Stopping radio to upload data")
-        self.tm.stopRadio()
-        self.log.info("Starting data upload")
-        self.tm.panel.setLed("blink")
-        upload = UploadThread(self.tm.q, self.config['server'])
-        upload.run()
-        upload.join()
-        self.tm.panel.setLed("off")
-        self.tm.startRadio()
 
-class ThreadManager(object):
-    """This is just a dumb wrapper to save some typing on threads we need to start/stop repeatedly"""
-    def __init__(self, config):
-        self.q = queue.Queue()
-        self.radio = None
-        self.gnss = None
-        self.panel = None
-        self.upload = None
-        self.config = config
-    
-    def startPanel(self):
-        self.panel = PanelThread(self.q)
-        self.panel.start()
-    
-    def startRadio(self):
-        self.radio = RadioThread(self.q, self.config['ATtty'])
-        self.radio.start()
-    
-    def stopRadio(self):
+        self.radioShouldBeRunning = False
         if self.radio != None and self.radio.is_alive():
             self.radio.stop()
             self.radio.join()
 
-    def startGnss(self):
-        self.gnss = GnssThread(self.q, self.config['NMEAtty'])
-        self.gnss.start()
-    
-    def checkThreads(self):
-        if not self.panel.is_alive():
-            log.warning("Panel thread died, restarting")
-            self.startPanel()
-        if not self.radio.is_alive():
-            log.warning("Radio thread died, restarting")
-            self.startRadio()
-        if not self.gnss.is_alive():
-            log.warning("Gnss thread died, restarting")
-            self.startGnss()
-
+        self.log.info("Starting data upload")
+        self.panel.setLed("blink")
+        upload = UploadThread(self.q, self.config['server'])
+        upload.run()
 
 if __name__ == "__main__":
     __main__()
