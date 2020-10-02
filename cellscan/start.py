@@ -9,8 +9,8 @@ import json
 from cellscan.panel import PanelThread
 from cellscan.radio import RadioThread
 from cellscan.gnss import GnssThread
-from cellscan.data import saveCellSite
-from cellscan.upload import UploadThread, db, Cellsite, Location
+from cellscan.data import saveCellSite, db, Cellsite, Location
+from cellscan.upload import UploadThread
 
 def __main__():
     # Note: The Telit modem in use (LE910C1) exposes multiple USB serial devices for different purposes,
