@@ -2,6 +2,7 @@ import threading
 import time
 import logging
 import serial
+import subprocess
 
 log = logging.getLogger('radio')
 
@@ -17,6 +18,13 @@ class RadioThread(threading.Thread):
         self.atx = None
 
     def run(self):
+        # Before we start using the modem, we need to make sure that ModemManager doesn't
+        # try to interact with it while we are. The mechanism is a little weird, when we run this
+        # command ModemManager closes its handles on the serial devices and promises not to touch
+        # them again for as long as the process this starts lives. This is of course yet another
+        # reason why this thread needs to terminate cleanly before uploads can run.
+        mmProcess = subprocess.Popen(["mmcli", "-m", "0", "--inhibit"])
+
         log.debug(f"Connecting to radio on {self.ATPort} to configure...")
         self.atx = serial.Serial(self.ATPort)
         self.__atReset()
@@ -32,6 +40,8 @@ class RadioThread(threading.Thread):
             except Exception:
                 log.exception("Network scan failed.")
             time.sleep(1)
+        
+        mmProcess.kill()
     
     def __networkScan(self):
         log.debug("Starting network scan")
