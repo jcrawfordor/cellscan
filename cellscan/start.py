@@ -5,6 +5,7 @@ import argparse
 import time
 import queue
 import json
+from datetime import datetime
 
 from cellscan.panel import PanelThread
 from cellscan.radio import RadioThread
@@ -81,6 +82,7 @@ class Runner(object):
     
     def handleNetworkData(self, event):
             # New network scan result
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             if self.locn != None:
                 self.panel.setLed('on')
                 sites = event[1]
@@ -88,6 +90,7 @@ class Runner(object):
                     bsn['lat'] = self.locn['lat']
                     bsn['lon'] = self.locn['lon']
                     bsn['alt'] = self.locn['alt']
+                    bsn['time'] = now
                     saveCellSite(bsn)
     
     def handlePanelEvent(self, event):

@@ -112,6 +112,18 @@ class UploadThread(threading.Thread):
             time.sleep(10)
             bearerInfo = self.__checkModemBearerStatus()
         
+        # We should now have network time available, take this opportunity to set our local clock
+        # to the cell network time, which is probably more accurate than the Pi's RTC when it's been
+        # running independently for god knows how long.
+        try:
+            timeResp = subprocess.check_output(['mmcli', '-m', self.modemIndex, '--time']).decode('UTF-8')
+            timeString = re.match(r"current: (.+)$", timeResp, re.MULTILINE).group(1)
+            timeString = timeString[:-6].replace('T','')
+            log.debug(f"Setting system time to {timeString}")
+            subprocess.check_output(['timedatectl', 'set-time', timeString])
+        except:
+            log.exception("Error updating local time")
+        
         log.debug(f"Adding IP and routes. Our IP {bearerInfo['ip']}, prefix {bearerInfo['prefix']}, gateway {bearerInfo['gateway']}, mtu {bearerInfo['mtu']}")
         # Set IP and MTU on device
         subprocess.check_output(["ip", "link", "set", "dev", self.interface, "up"])

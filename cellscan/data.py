@@ -16,6 +16,7 @@ class Cellsite(Model):
     gen = CharField()
     cellid = CharField()
     uploaded = BooleanField(default=False)
+    time = DateTimeField()
 
     class Meta:
         database = db
