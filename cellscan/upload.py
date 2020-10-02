@@ -57,6 +57,7 @@ class UploadThread(threading.Thread):
         self.q = q
         self.target = target
         self.modemIndex = 0
+        self.bearerIndex = 0
         self.interface = interface
         self.apn = apn
 
@@ -71,7 +72,6 @@ class UploadThread(threading.Thread):
         # Find out what index # the modem is, because it changes
         modemResp = subprocess.check_output(['mmcli', '-L']).decode('UTF-8')
         self.modemIndex = re.search(r"/Modem/(\d+) ", modemResp).group(1)
-        log.debug(f"Using modem index {self.modemIndex}")
 
         log.debug("Reseting network config")
         # We do this stuff because several steps will fail if they are already setup from last time
@@ -89,6 +89,11 @@ class UploadThread(threading.Thread):
             subprocess.check_output(["mmcli", "-m", self.modemIndex, "--simple-connect", f"apn={self.apn}", "--timeout", "30"])
         except subprocess.CalledProcessError:
             log.debug("Initial modem connection failed, probably timeout, will retry")
+        
+        # Now we need to find the bearer # which also changes
+        bearerResp = subprocess.check_output(['mmcli', '-m', self.modemIndex]).decode('UTF-8')
+        self.bearerIndex = re.search(r"/Bearer/(\d+) ", bearerResp).group(1)
+        log.debug(f"Using data bearer channel {self.bearerIndex}")
         
         # Retry connecting until it works
         retryCount = 0
