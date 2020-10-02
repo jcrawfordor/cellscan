@@ -82,7 +82,7 @@ class Runner(object):
     def handleNetworkData(self, event):
             # New network scan result
             if self.locn != None:
-                self.panel.setLed('once')
+                self.panel.setLed('on')
                 sites = event[1]
                 for bsn in sites:
                     bsn['lat'] = self.locn['lat']
