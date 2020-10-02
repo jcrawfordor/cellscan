@@ -5,7 +5,7 @@ import subprocess
 import re
 import ipaddress
 
-log = logging.getLogger('radio')
+log = logging.getLogger('upload')
 
 from cellscan.data import Cellsite, Location
 
@@ -65,9 +65,13 @@ class UploadThread(threading.Thread):
         self.__getDataConnection()
         self.__uploadData()
         self.__disableNetworkConnection()
-        q.put(["UploadComplete"])
+        self.q.put(["UploadComplete", {}])
 
     def __getDataConnection(self):
+        log.debug("Reseting network config")
+        # We do this stuff because several steps will fail if they are already setup from last time
+        subprocess.check_output(["ip", "addr", "flush", "dev", self.interface])
+
         # Enable the modem, which is often disabled at boot
         log.debug(f"Enabling modem {self.modemIndex}")
         # This one must succeed, we let the exception propagate up if it doesn't

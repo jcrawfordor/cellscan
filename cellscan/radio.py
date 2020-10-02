@@ -67,6 +67,7 @@ class RadioThread(threading.Thread):
         # This is kind of a weird set of steps designed to put the modem into a good state even if
         # it had previously received a partial command or was in a weird config (e.g. echo on).
         # I kept running into this stuff in testing/debugging.
+        log.debug("Reset modem")
         self.atx.write(b'\r\n') # Clear any partial command it may have received
         self.atx.write(b'ATZ\r\n') # Soft reset modem (turns off weird modes)
         time.sleep(1)
