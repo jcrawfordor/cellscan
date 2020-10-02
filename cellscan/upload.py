@@ -52,11 +52,11 @@ class UploadThread(threading.Thread):
     apn -- APN to use for data bearer connection
     """
 
-    def __init__(self, q, target, modemIndex=0, interface="wwan0", apn="hologram"):
+    def __init__(self, q, target, interface="wwan0", apn="hologram"):
         threading.Thread.__init__(self)
         self.q = q
         self.target = target
-        self.modemIndex = str(modemIndex)
+        self.modemIndex = 0
         self.interface = interface
         self.apn = apn
 
@@ -68,6 +68,11 @@ class UploadThread(threading.Thread):
         self.q.put(["UploadComplete", {}])
 
     def __getDataConnection(self):
+        # Find out what index # the modem is, because it changes
+        modemResp = subprocess.check_output(['mmcli', '-L']).decode('UTF-8')
+        self.modemIndex = re.search(r"/Modem/(\d+) ", modemResp).group(1)
+        log.debug(f"Using modem index {self.modemIndex}")
+
         log.debug("Reseting network config")
         # We do this stuff because several steps will fail if they are already setup from last time
         subprocess.check_output(["ip", "addr", "flush", "dev", self.interface])

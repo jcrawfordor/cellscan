@@ -3,6 +3,7 @@ import time
 import logging
 import serial
 import subprocess
+import re
 
 log = logging.getLogger('radio')
 
@@ -18,11 +19,16 @@ class RadioThread(threading.Thread):
         self.atx = None
 
     def run(self):
+        # Find out what index # the modem is, because it changes
+        modemResp = subprocess.check_output(['mmcli', '-L']).decode('UTF-8')
+        self.modemIndex = re.search(r"/Modem/(\d+) ", modemResp).group(1)
+
         # Before we start using the modem, we need to make sure that ModemManager doesn't
         # try to interact with it while we are. The mechanism is a little weird, when we run this
         # command ModemManager closes its handles on the serial devices and promises not to touch
         # them again for as long as the process this starts lives. This is of course yet another
         # reason why this thread needs to terminate cleanly before uploads can run.
+        log.debug(f"Inhibiting modem index {self.modemIndex}")
         mmProcess = subprocess.Popen(["mmcli", "-m", "0", "--inhibit"])
 
         log.debug(f"Connecting to radio on {self.ATPort} to configure...")
