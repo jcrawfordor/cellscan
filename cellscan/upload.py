@@ -116,9 +116,9 @@ class UploadThread(threading.Thread):
         # to the cell network time, which is probably more accurate than the Pi's RTC when it's been
         # running independently for god knows how long.
         try:
+            subprocess.check_output(['timedatectl', 'set-ntp', 'false'])
             timeResp = subprocess.check_output(['mmcli', '-m', self.modemIndex, '--time']).decode('UTF-8')
-            log.debug(f"mmcli says: {timeResp}")
-            timeString = re.match(r"Time\W+\|\W+current: (.+)$", timeResp, re.MULTILINE).group(1)
+            timeString = re.search(r"Time\W+\|\W+current: (.+)\W", timeResp, re.MULTILINE).group(1)
             timeString = timeString[:-6].replace('T','')
             log.debug(f"Setting system time to {timeString}")
             subprocess.check_output(['timedatectl', 'set-time', timeString])
