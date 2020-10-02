@@ -117,7 +117,8 @@ class UploadThread(threading.Thread):
         # running independently for god knows how long.
         try:
             timeResp = subprocess.check_output(['mmcli', '-m', self.modemIndex, '--time']).decode('UTF-8')
-            timeString = re.match(r"current: (.+)$", timeResp, re.MULTILINE).group(1)
+            log.debug(f"mmcli says: {timeResp}")
+            timeString = re.match(r"Time\W+\|\W+current: (.+)$", timeResp, re.MULTILINE).group(1)
             timeString = timeString[:-6].replace('T','')
             log.debug(f"Setting system time to {timeString}")
             subprocess.check_output(['timedatectl', 'set-time', timeString])
