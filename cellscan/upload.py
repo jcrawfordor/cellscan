@@ -184,6 +184,7 @@ class UploadThread(threading.Thread):
 
                 if response['status'] == 'OK':
                     updateTx.execute()
+                    sock.close()
                     break
             except:
                 log.exception("Sending data failed.")
