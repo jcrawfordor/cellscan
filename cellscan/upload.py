@@ -147,11 +147,10 @@ class UploadThread(threading.Thread):
         # And just like that, there should now be network connectivity to just the target IP.
     
     def __uploadData(self):
-        log.error("Would upload data, but that's not implemented.")
         # We don't really need to worry about concurrent access here because the scan can't be
         # running during uploads, so we get to be a bit lazy...
         sites = Cellsite.select().where(Cellsite.uploaded == False)
-        updateTx = Cellsite.update(Uploaded=True).where(Cellsite.uploaded == False)
+        updateTx = Cellsite.update(uploaded=True).where(Cellsite.uploaded == False)
         siteList = []
         for site in sites:
             siteList.append({
@@ -170,7 +169,7 @@ class UploadThread(threading.Thread):
         dataString = json.dumps(data)
 
         attempts = 0
-        while attempts > 5:
+        while attempts < 5:
             attempts += 1
             log.debug(f"Sending data, attempt {attempts}")
 
@@ -185,13 +184,16 @@ class UploadThread(threading.Thread):
                 if response['status'] == 'OK':
                     updateTx.execute()
                     sock.close()
-                    break
+                    return
+                else:
+                    raise UploadException(f"Received bad repsonse from server: {response}")
             except:
                 log.exception("Sending data failed.")
+        log.error("Gave up on uploading data after multiple attempts.")
     
     def __receiveObject(self, sock):
-        message = ''
-        while not message.endswith('\x04'):
+        message = b''
+        while not message.endswith(b'\x04'):
             message += sock.recv(1024)
         return json.loads(message[:-1].decode('UTF-8'))
 
