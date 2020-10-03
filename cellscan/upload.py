@@ -26,8 +26,11 @@ class UploadThread(threading.Thread):
       really expound on why).
     * This thread needs to cleanly exit before scans start or you could run into the same
       problems. Likewise, the scan thread should be cleanly terminated before starting this one.
+    * Interacting with the cellular network at a low level is inherently unpredictable and some
+      things will normally be retried a number of times before they succeed.
     
-    This all adds up to the upload process probably taking 1 minute or more to complete.
+    This all adds up to the upload process probably taking 1 minute or more to complete. There is
+    a generous chance that it will fail entirely for "normal" reasons (e.g. no cell reception).
 
     This thread does a lot of stuff manually that would normally be done automatically by
     NetworkManager. The reason is basically that we want to very closely control the process so
@@ -47,10 +50,10 @@ class UploadThread(threading.Thread):
     Positional arguments:
     q -- queue object for communication with master thread
     target -- IP to submit data to
+    deviceID -- identification string for collection server to know who we are
 
     Keyword arguments:
-    modemIndex -- the index # of the modem according to mmcli. Normally '0' unless there are multiple.
-    interface -- the name of the network interface for the modem. Normally 'wwan0'.
+    interface -- the name of the network interface for the modem. Normally 'wwan0'
     apn -- APN to use for data bearer connection
     """
 
@@ -80,8 +83,7 @@ class UploadThread(threading.Thread):
         log.debug(f"mmcli says {modemResp}")
         self.modemIndex = re.search(r"/Modem/(\d+) ", modemResp).group(1)
 
-        log.debug("Reseting network config")
-        # We do this stuff because several steps will fail if they are already setup from last time
+        # We do this because several steps will fail if the interface already has an IP.
         subprocess.check_output(["ip", "addr", "flush", "dev", self.interface])
 
         # Enable the modem, which is often disabled at boot
@@ -93,14 +95,13 @@ class UploadThread(threading.Thread):
         # we're going to run it once to load in the config and then connect in a retry loop.
         log.debug(f"Configuring modem for APN {self.apn}")
         try:
-            subprocess.check_output(["mmcli", "-m", self.modemIndex, "--simple-connect", f"apn={self.apn}", "--timeout", "30"])
+            subprocess.check_output(["mmcli", "-m", self.modemIndex, "--simple-connect", f"apn={self.apn}", "--timeout", "60"])
         except subprocess.CalledProcessError:
             log.debug("Initial modem connection failed, probably timeout, will retry")
         
         # Now we need to find the bearer # which also changes
         bearerResp = subprocess.check_output(['mmcli', '-m', self.modemIndex]).decode('UTF-8')
         self.bearerIndex = re.search(r"/Bearer/(\d+)", bearerResp).group(1)
-        log.debug(f"Using data bearer channel {self.bearerIndex}")
         
         # Retry connecting until it works
         retryCount = 0
@@ -114,7 +115,7 @@ class UploadThread(threading.Thread):
             try:
                 subprocess.check_output(["mmcli", "-b", self.bearerIndex, "-c"])
             except subprocess.CalledProcessError:
-                log.debug("Modem connect command failed, probably timeout")
+                pass
 
             time.sleep(10)
             bearerInfo = self.__checkModemBearerStatus()
@@ -123,38 +124,49 @@ class UploadThread(threading.Thread):
         # to the cell network time, which is probably more accurate than the Pi's RTC when it's been
         # running independently for god knows how long.
         try:
+            # timedatectl won't let us set clock when NTP is on. Besides, we wouldn't be bothering
+            # with this if we thought there were any network connections for NTP to use.
             subprocess.check_output(['timedatectl', 'set-ntp', 'false'])
             timeResp = subprocess.check_output(['mmcli', '-m', self.modemIndex, '--time']).decode('UTF-8')
             timeString = re.search(r"Time\W+\|\W+current: (.+)\W", timeResp, re.MULTILINE).group(1)
-            timeString = timeString[:-6].replace('T','')
+            # mmcli tells us the time in strict ISO format, which oddly timedatectl does not
+            # accept. We remove the TZ part and replace the 'T' with a space to make it happy.
+            # Cell networks report local time so TZ is *NOT* zulu.
+            # TODO: this will screw up time zones if the cell site does not match the OS TZ.
+            # Need to intelligently correct TZ before going on any interstate trips.
+            timeString = timeString[:-6].replace('T',' ')
             log.debug(f"Setting system time to {timeString}")
             subprocess.check_output(['timedatectl', 'set-time', timeString])
         except:
             log.exception("Error updating local time")
         
-        log.debug(f"Adding IP and routes. Our IP {bearerInfo['ip']}, prefix {bearerInfo['prefix']}, gateway {bearerInfo['gateway']}, mtu {bearerInfo['mtu']}")
+        log.debug(f"Cell network config: IP {bearerInfo['ip']}, prefix {bearerInfo['prefix']}, gateway {bearerInfo['gateway']}, mtu {bearerInfo['mtu']}")
         # Set IP and MTU on device
         subprocess.check_output(["ip", "link", "set", "dev", self.interface, "up"])
         subprocess.check_output(["ip", "addr", "add", bearerInfo['ip'], "dev", self.interface])
         subprocess.check_output(["ip", "link", "set", "dev", self.interface, "mtu", bearerInfo['mtu']])
+
         # Figure out routes
         # We need to calculate the "network IP" for the route because mmcli doesn't give it to us
         # directly, but ip route will reject if we use a wack IP with a CIDR. non-strict parsing
-        # in the ipaddress module seems to be fine with describing a network with an IP *in* it.
+        # in the ipaddress module seems to be fine with describing a network using an IP *in* it.
         net = ipaddress.IPv4Network(f"{bearerInfo['ip']}/{bearerInfo['prefix']}", strict=False)
         baseIP = net.network_address
-        log.debug(f"Adding routes for {baseIP}/{bearerInfo['prefix']} and {self.target}")
         # Route to access gateway
         subprocess.check_output(["ip", "route", "add", f"{baseIP}/{bearerInfo['prefix']}", "dev", self.interface])
         # Route to access target via gateway
         subprocess.check_output(["ip", "route", "add", self.target, "via", bearerInfo['gateway']])
         # And just like that, there should now be network connectivity to just the target IP.
+        # TODO: add route to a DNS server so we can resolve collection server by name?
     
     def __uploadData(self):
         # We don't really need to worry about concurrent access here because the scan can't be
         # running during uploads, so we get to be a bit lazy...
         sites = Cellsite.select().where(Cellsite.uploaded == False)
+        # This is just creating a transaction, we won't execute it unless we get positive
+        # confirmation from the collection server.
         updateTx = Cellsite.update(uploaded=True).where(Cellsite.uploaded == False)
+
         siteList = []
         for site in sites:
             siteList.append({
@@ -167,10 +179,16 @@ class UploadThread(threading.Thread):
                 'cellid': site.cellid,
                 'lac': site.lac,
                 'gen': site.gen,
-                'time': site.time.isoformat()
+                'time': site.time.isoformat() # ugh
             })
-        data = {'device': self.deviceId, 'sites': siteList}
+        data = {'action': 'upload', 'device': self.deviceId, 'sites': siteList}
         dataString = json.dumps(data)
+
+        # Here is a good place to describe our minimal "network protocol": the client sends a JSON
+        # string as UTF-8 followed by an ASCII EOT character. It expects the server to reply
+        # likewise. This is intended to be more economical with bytes than HTTP while still
+        # allowing the server to have an opportunistic C2 channel for future features.
+        # TODO: wrap this up with TLS. Consider implementing with Twisted to match the server code.
 
         attempts = 0
         while attempts < 5:
@@ -190,7 +208,7 @@ class UploadThread(threading.Thread):
                     sock.close()
                     return
                 else:
-                    raise UploadException(f"Received bad repsonse from server: {response}")
+                    raise UploadException(f"Received bad response from server: {response}")
             except:
                 log.exception("Sending data failed.")
         log.error("Gave up on uploading data after multiple attempts.")
@@ -204,12 +222,10 @@ class UploadThread(threading.Thread):
     def __disableNetworkConnection(self):
         log.debug("Disabling network connection")
         subprocess.check_output(["ip", "link", "set", "dev", self.interface, "down"])
-        log.debug("Disconnecting bearer channel")
         subprocess.check_output(["mmcli", "-b", self.bearerIndex, "-x"])
 
     def __checkModemBearerStatus(self):
         try:
-            # We are just assuming it's bearer 0... won't deal with more.
             checkBearer = subprocess.check_output(["mmcli", "-b", self.bearerIndex])
             checkBearer = checkBearer.decode('UTF-8')
             if "connected: yes" in checkBearer:
@@ -220,8 +236,7 @@ class UploadThread(threading.Thread):
                 netInfo['mtu'] = re.search(r"mtu: ([\d\.]+)", checkBearer).group(1)
                 return netInfo
             else:
-                log.debug("Modem bearer check succeeded but did not show connected status")
                 return None
         except subprocess.CalledProcessError:
-            log.debug("Checking modem bearer status failed.")
+            log.exception("Checking modem bearer status failed.")
             return None
