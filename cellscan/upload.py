@@ -77,6 +77,7 @@ class UploadThread(threading.Thread):
     def __getDataConnection(self):
         # Find out what index # the modem is, because it changes
         modemResp = subprocess.check_output(['mmcli', '-L']).decode('UTF-8')
+        log.debug(f"mmcli says {modemResp}")
         self.modemIndex = re.search(r"/Modem/(\d+) ", modemResp).group(1)
 
         log.debug("Reseting network config")

@@ -103,6 +103,8 @@ class Runner(object):
         self.log.info("Upload complete. Waiting for modem to reset then returning to normal mode.")
         time.sleep(5)
         self.radioShouldBeRunning = True
+        # Reset the location because the upload process often causes GPS fix to drop
+        self.locn = None
         self.panel.setLed("off")
         self.radio = RadioThread(self.q, self.config['ATtty'])
         self.radio.start()
