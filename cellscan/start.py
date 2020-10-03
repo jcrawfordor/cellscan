@@ -21,7 +21,8 @@ def __main__():
     config = {
         'ATtty': '/dev/ttyUSB3',
         'NMEAtty': '/dev/ttyUSB1',
-        'server': '8.8.8.8'
+        'server': '104.225.250.115',
+        'id': 'FFT-01'
     }
     runner = Runner(config)
     runner.setup()
@@ -116,7 +117,7 @@ class Runner(object):
 
         self.log.info("Starting data upload")
         self.panel.setLed("blink")
-        upload = UploadThread(self.q, self.config['server'])
+        upload = UploadThread(self.q, self.config['server'], self.config['id'])
         upload.run()
 
 if __name__ == "__main__":

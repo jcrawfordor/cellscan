@@ -4,6 +4,8 @@ import logging
 import subprocess
 import re
 import ipaddress
+import json
+import socket
 
 log = logging.getLogger('upload')
 
@@ -52,10 +54,11 @@ class UploadThread(threading.Thread):
     apn -- APN to use for data bearer connection
     """
 
-    def __init__(self, q, target, interface="wwan0", apn="hologram"):
+    def __init__(self, q, target, deviceId, interface="wwan0", apn="hologram"):
         threading.Thread.__init__(self)
         self.q = q
         self.target = target
+        self.deviceId = deviceId
         self.modemIndex = 0
         self.bearerIndex = 0
         self.interface = interface
@@ -99,7 +102,7 @@ class UploadThread(threading.Thread):
         retryCount = 0
         bearerInfo = self.__checkModemBearerStatus()
         while bearerInfo == None:
-            if retryCount > 5:
+            if retryCount > 10:
                 raise UploadException("Could not connect modem after multiple retries.")
             retryCount += 1
             log.debug(f"Connecting modem for data, retry {retryCount}")
@@ -145,7 +148,51 @@ class UploadThread(threading.Thread):
     
     def __uploadData(self):
         log.error("Would upload data, but that's not implemented.")
-        pass
+        # We don't really need to worry about concurrent access here because the scan can't be
+        # running during uploads, so we get to be a bit lazy...
+        sites = Cellsite.select().where(Cellsite.uploaded == False)
+        updateTx = Cellsite.update(Uploaded=True).where(Cellsite.uploaded == False)
+        siteList = []
+        for site in sites:
+            siteList.append({
+                'lat': site.lat,
+                'lon': site.lon,
+                'alt': site.alt,
+                'rx': site.rx,
+                'mcc': site.mcc,
+                'mnc': site.mnc,
+                'cellid': site.cellid,
+                'lac': site.lac,
+                'gen': site.gen,
+                'time': site.time
+            })
+        data = {'device': self.deviceId, 'sites': siteList}
+        dataString = json.dumps(data)
+
+        attempts = 0
+        while attempts > 5:
+            attempts += 1
+            log.debug(f"Sending data, attempt {attempts}")
+
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(20)
+                sock.connect((self.target, 6402))
+                sock.sendall(dataString.encode())
+                sock.sendall(b'\x04')
+                response = self.__receiveObject(sock)
+
+                if response['status'] == 'OK':
+                    updateTx.execute()
+                    break
+            except:
+                log.exception("Sending data failed.")
+    
+    def __receiveObject(self, sock):
+        message = ''
+        while not message.endswith('\x04'):
+            message += sock.recv(1024)
+        return json.loads(message[:-1].decode('UTF-8'))
 
     def __disableNetworkConnection(self):
         log.debug("Disabling network connection")
