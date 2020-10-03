@@ -85,7 +85,11 @@ class Runner(object):
             # New network scan result
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             if self.locn != None:
-                self.panel.setLed('on')
+                # Slightly dumb check to prevent setting LED back to on if the radio thread is
+                # shutting down.
+                if self.radioShouldBeRunning:
+                    self.panel.setLed('on')
+
                 sites = event[1]
                 for bsn in sites:
                     bsn['lat'] = self.locn['lat']
@@ -110,8 +114,9 @@ class Runner(object):
     def uploadData(self):
         # Stop the scanning, this will block until it's closed out
         self.log.debug("Uploading data")
-
+        self.panel.setLed("blink")
         self.radioShouldBeRunning = False
+
         if self.radio != None and self.radio.is_alive():
             self.log.debug("Asking scanner to stop")
             self.radio.stop()
@@ -120,7 +125,6 @@ class Runner(object):
             time.sleep(5)
 
         self.log.info("Starting data upload")
-        self.panel.setLed("blink")
         upload = UploadThread(self.q, self.config['server'], self.config['id'])
         upload.run()
 
