@@ -108,10 +108,11 @@ class Runner(object):
     
     def uploadData(self):
         # Stop the scanning, this will block until it's closed out
-        self.log.debug("Stopping radio to upload data")
+        self.log.debug("Uploading data")
 
         self.radioShouldBeRunning = False
         if self.radio != None and self.radio.is_alive():
+            self.log.debug("Asking scanner to stop")
             self.radio.stop()
             self.radio.join()
 
