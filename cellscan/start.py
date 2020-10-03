@@ -18,6 +18,8 @@ def __main__():
     # and the composition is configurable (see the LE9xx AT reference manual). Here is what seems to be
     # the case for the default configuration:
     # ttyUSB0 (???)  ttyUSB1 (NMEA)  ttyUSB2 (???)  ttyUSB3 (Hayes AT)  ttyUSB4 (???)
+    # TODO: load config in some smart way. Possibly derive ID from SIM card and server from
+    # DNS.
     config = {
         'ATtty': '/dev/ttyUSB3',
         'NMEAtty': '/dev/ttyUSB1',
@@ -34,12 +36,10 @@ class Runner(object):
     def __init__(self, config):
         parser = argparse.ArgumentParser(description='CellScan service.')
         parser.add_argument('-l', '--log', dest='logLevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO', help='Set the logging level')
-        parser.add_argument('-o', '--out', dest='out', default='output.json', help='Output file')
         self.args = parser.parse_args()
 
         logging.basicConfig(level=getattr(logging, self.args.logLevel))
         self.log = logging.getLogger("cellscan")
-        self.log.info("CellScan starting up.")
 
         self.locn = None
         self.q = queue.Queue()
@@ -62,7 +62,6 @@ class Runner(object):
         self.gnss.start()
         # we DON'T start the radio thread here because it'll be started when the upload finishes.
     
-    # And now we just go into event loop
     def step(self):
         event = self.q.get(block=True)
         self.log.debug(f"Received {event[0]}: {event[1]}")
@@ -99,21 +98,21 @@ class Runner(object):
                     saveCellSite(bsn)
     
     def handlePanelEvent(self, event):
-            # User pressed a button
             if event[1]['type'] == 'CtlButton' and event[1]['time'] < 1:
+                # User pressed a button
                 self.uploadData()
 
     def handleUploadComplete(self, event):
         self.log.info("Upload complete. Waiting for modem to reset then returning to normal mode.")
         self.radioShouldBeRunning = True
         self.panel.setLed("off")
-        time.sleep(5)
+        time.sleep(5) # Needed to avoid race condition around inhibiting
         self.radio = RadioThread(self.q, self.config['ATtty'])
         self.radio.start()
     
     def uploadData(self):
         # Stop the scanning, this will block until it's closed out
-        self.log.debug("Uploading data")
+        self.log.info("Starting data upload")
         self.panel.setLed("blink")
         self.radioShouldBeRunning = False
 
@@ -122,9 +121,8 @@ class Runner(object):
             self.radio.stop()
             self.radio.join()
             self.log.debug("Scanner stopped, waiting for modem to uninhibit")
-            time.sleep(5)
+            time.sleep(5) # Needed to avoid race condition around inhibiting
 
-        self.log.info("Starting data upload")
         upload = UploadThread(self.q, self.config['server'], self.config['id'])
         upload.run()
 

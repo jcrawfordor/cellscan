@@ -31,12 +31,10 @@ class RadioThread(threading.Thread):
         log.debug(f"Inhibiting modem index {self.modemIndex}")
         mmProcess = subprocess.Popen(["mmcli", "-m", self.modemIndex, "--inhibit"])
 
-        log.debug(f"Connecting to radio on {self.ATPort} to configure...")
         self.atx = serial.Serial(self.ATPort)
         self.__atReset()
         modemModel = self.__atIdentify()
         log.info(f"Connected to modem {modemModel}")
-        log.debug("Enabling unsolicited NMEA data...")
         self.__atEnableNMEA()
         
         while self.live:
@@ -46,18 +44,26 @@ class RadioThread(threading.Thread):
             except Exception:
                 log.exception("Network scan failed.")
             time.sleep(1)
-        log.debug("Scanner shutting down")
         mmProcess.kill()
     
     def __networkScan(self):
-        log.debug("Starting network scan")
         lines = self.__atGetResp(b'AT#CSURV')
-        log.debug("End of network scan, parsing")
         sites = []
         for line in lines.split("\n"):
             try:
-                log.debug(f"Parsing line: {line}")
+                log.debug(f"Network scan line: {line}")
                 if line.startswith("earfcn"):
+                    # Be warned: Per the Telit manual, Easy Scan :TM: for 4G is "beta". When
+                    # associated with an LTE cell, the scan returns full info on that cell but
+                    # only partial info on neighbors. 4G IMSI catchers are known to exist so I am
+                    # loathe to disable 4G association when scanning, but more experimentation is
+                    # needed to check if 3G neighbors are reported when a 4G association is
+                    # available (signs point to no: the options are full 3G scan or defective
+                    # 4G scan). Thanks Telit. Normally the modem would not be associated anyway
+                    # but it tends to be immediately after upload since we had a data bearer.
+                    # TODO: should we force the modem to disassociate after uploading? Is this
+                    # even desirable in terms of data quality?
+
                     # Indicates a 4G cell
                     lineItems = line.split()
                     rx = lineItems[3]
@@ -68,13 +74,13 @@ class RadioThread(threading.Thread):
                     lac = lineItems[11]
                     sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid, 'gen': '4g'})
 
+                # TODO: refuctor this to be less repetitive.
                 if line.startswith("uarfcn"):
                     # Indicates a 3G cell
                     lineItems = line.split()
                     rx = lineItems[3]
                     mcc = lineItems[5]
                     mnc = lineItems[7]
-                    scr = lineItems[10]
                     cellid = lineItems[12]
                     lac = lineItems[14]
                     sites.append({'rx': rx, 'mcc': mcc, 'mnc': mnc, 'lac': lac, 'cellid': cellid, 'gen': '3g'})
@@ -97,10 +103,13 @@ class RadioThread(threading.Thread):
         # This is kind of a weird set of steps designed to put the modem into a good state even if
         # it had previously received a partial command or was in a weird config (e.g. echo on).
         # I kept running into this stuff in testing/debugging.
+        # Incidentally, disabling echo back does not seem to work. At least I spent a good hour
+        # with the AT reference manual and couldn't make it happen. It would simplify things here
+        # if that could be figured out.
         log.debug("Reset modem")
         self.atx.write(b'\r\n') # Clear any partial command it may have received
         self.atx.write(b'ATZ\r\n') # Soft reset modem (turns off weird modes)
-        time.sleep(1)
+        time.sleep(1) # Avoid race condition around unexpected echo back
         self.atx.reset_input_buffer() # Discard anything the modem returned (echos, etc)
     
     def __atIdentify(self):
