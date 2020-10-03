@@ -166,7 +166,7 @@ class UploadThread(threading.Thread):
                 'cellid': site.cellid,
                 'lac': site.lac,
                 'gen': site.gen,
-                'time': site.time
+                'time': site.time.isoformat()
             })
         data = {'device': self.deviceId, 'sites': siteList}
         dataString = json.dumps(data)

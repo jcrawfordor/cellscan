@@ -100,7 +100,8 @@ class Runner(object):
                 self.uploadData()
 
     def handleUploadComplete(self, event):
-        self.log.info("Upload complete. Returning to normal mode.")
+        self.log.info("Upload complete. Waiting for modem to reset then returning to normal mode.")
+        time.sleep(5)
         self.radioShouldBeRunning = True
         self.panel.setLed("off")
         self.radio = RadioThread(self.q, self.config['ATtty'])
@@ -115,6 +116,8 @@ class Runner(object):
             self.log.debug("Asking scanner to stop")
             self.radio.stop()
             self.radio.join()
+            self.log.debug("Scanner stopped, waiting for modem to uninhibit")
+            time.sleep(5)
 
         self.log.info("Starting data upload")
         self.panel.setLed("blink")
