@@ -46,7 +46,7 @@ class RadioThread(threading.Thread):
             except Exception:
                 log.exception("Network scan failed.")
             time.sleep(1)
-        
+        log.debug("Scanner shutting down")
         mmProcess.kill()
     
     def __networkScan(self):

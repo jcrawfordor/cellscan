@@ -66,9 +66,12 @@ class UploadThread(threading.Thread):
 
     def run(self):
         log.info("Starting upload")
-        self.__getDataConnection()
-        self.__uploadData()
-        self.__disableNetworkConnection()
+        try:
+            self.__getDataConnection()
+            self.__uploadData()
+            self.__disableNetworkConnection()
+        except:
+            log.exception("Upload failed")
         self.q.put(["UploadComplete", {}])
 
     def __getDataConnection(self):
