@@ -105,9 +105,9 @@ class Runner(object):
 
     def handleUploadComplete(self, event):
         self.log.info("Upload complete. Waiting for modem to reset then returning to normal mode.")
-        time.sleep(5)
         self.radioShouldBeRunning = True
         self.panel.setLed("off")
+        time.sleep(5)
         self.radio = RadioThread(self.q, self.config['ATtty'])
         self.radio.start()
     
