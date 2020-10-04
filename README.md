@@ -8,7 +8,7 @@ Cellscan is a small software package intended to run on an embedded computer wit
 
 This project is loosely based on Project Seaglass from the University of Washington, but with the goal of using a significantly lower cost and easier to obtain data collection segment. The major differences from Seaglass are:
 
-- Use of a different model of cellular model that's much easier to buy (in fact almost comically easy to buy)
+- Use of a different model of cellular modem that's much easier to buy (in fact almost comically easy to buy)
 - Use of the same cellular modem used for data collection to submit the data, avoiding the need for a separate LTE hotspot but complicating the software a bit.
 - Designed with low cellular data usage in mind, to allow the use of a low-cost bill-by-MB "IoT" cellular plan
 - Use of the cellular modem's built-in GNSS (GPS/GLONASS) capability for location tracking instead of a dedicated serial GPS receiver.
