@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="Cellscan",
+    name="cellscan",
     version="0.2.0",
     author="Jesse B. Crawford",
     author_email="jesse@jbcrawford.us",

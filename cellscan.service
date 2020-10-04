@@ -1,0 +1,14 @@
+[Unit]
+Description=CellScan Service
+After=network.target
+Requires=dbus.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/cellscan
+ExecStart=/home/pi/cellscan/start.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
