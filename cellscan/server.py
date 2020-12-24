@@ -1,10 +1,15 @@
 import socket, json, argparse
-from cellscan.data import Cellsite, Location
+from cellscan.data import db, Cellsite, Location
 
 def __main__():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(('0.0.0.0', 6402))
     sock.listen(1)
+
+    db.connect()
+    db.create_tables([Cellsite, Location])
+
+    print("Cellscan server up")
 
     while True:
         conn, client = sock.accept()
