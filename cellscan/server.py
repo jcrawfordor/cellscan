@@ -11,7 +11,6 @@ def __main__():
         obj = recvObject(conn)
         print(f"{client}: {obj}")
 
-        obj = json.loads(obj)
         if obj['action'] == "upload":
             handleUpload(obj)
 
