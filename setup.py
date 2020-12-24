@@ -21,6 +21,6 @@ setuptools.setup(
         'peewee'
     ],
     entry_points = {
-        'console_scripts': ['cellscan=cellscan.start:__main__', 'cellserv=cellscan.server'],
+        'console_scripts': ['cellscan=cellscan.start:__main__', 'cellserv=cellscan.server:__main__'],
     }
 )
